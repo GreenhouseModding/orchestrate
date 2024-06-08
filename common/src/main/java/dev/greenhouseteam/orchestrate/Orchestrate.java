@@ -61,10 +61,10 @@ public class Orchestrate {
 
     public static Song createTestSong() {
         Song.Builder builder = new Song.Builder();
-        for (int i = 0; i < Key.values().length * 4; ++i) {
+        for (int i = 0; i < Key.values().length * 5; ++i) {
             int octave = (i / 12) + 1;
             int index = i % 12;
-            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), i * 10, 10));
+            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), i * 20, 10));
         }
         return builder.build();
     }

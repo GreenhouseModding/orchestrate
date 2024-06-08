@@ -3,11 +3,11 @@ package dev.greenhouseteam.orchestrate.client.sound;
 import dev.greenhouseteam.mib.access.PlayerAccess;
 import dev.greenhouseteam.mib.client.sound.MibSoundInstance;
 import dev.greenhouseteam.mib.data.ExtendedSound;
-import dev.greenhouseteam.mib.data.Key;
 import dev.greenhouseteam.mib.data.KeyWithOctave;
 import dev.greenhouseteam.mib.data.MibSoundSet;
 import dev.greenhouseteam.mib.mixin.client.SoundEngineAccessor;
 import dev.greenhouseteam.mib.mixin.client.SoundManagerAccessor;
+import dev.greenhouseteam.orchestrate.Orchestrate;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateSoundEvents;
 import dev.greenhouseteam.orchestrate.song.Note;
 import dev.greenhouseteam.orchestrate.song.Song;
@@ -105,10 +105,9 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
         ++elapsedTicks;
     }
 
-    // TODO: Test code, remove when more dynamic stuff exists.
     public void playNewNotes() {
         if (isMaster()) {
-            for (Note note : song.notes().stream().filter(note -> note.duration() == elapsedTicks).toList()) {
+            for (Note note : song.notes().stream().filter(note -> note.startTime() == elapsedTicks).toList()) {
                 ExtendedSound sound = soundSet.getSound(note.key(), volume);
                 float pitch = note.key().getPitchFromNote();
                 Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, player, x, y, z, stopPredicate, sound.startSound().value(), song, soundSet, extendedSound, source, volume, pitch, 30, 0, false));
