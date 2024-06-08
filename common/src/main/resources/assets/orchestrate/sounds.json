@@ -1,0 +1,7 @@
+{
+  "orchestrate.internal.master": {
+    "sounds": [
+      "minecraft:intentionally_empty"
+    ]
+  }
+}
