@@ -64,7 +64,7 @@ public class Orchestrate {
         for (int i = 0; i < Key.values().length * 5; ++i) {
             int octave = (i / 12) + 1;
             int index = i % 12;
-            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), i * 20, 10));
+            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 0.1F + ((float) i / Key.values().length), i, 3));
         }
         return builder.build();
     }
