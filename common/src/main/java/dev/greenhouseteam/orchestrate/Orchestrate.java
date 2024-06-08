@@ -63,7 +63,7 @@ public class Orchestrate {
         Song.Builder builder = new Song.Builder();
         for (int i = 0; i < Key.values().length * 4; ++i) {
             int octave = (i / 12) + 1;
-            int index = i - (octave - 1) * 11;
+            int index = i % 12;
             builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), i * 10, 10));
         }
         return builder.build();
