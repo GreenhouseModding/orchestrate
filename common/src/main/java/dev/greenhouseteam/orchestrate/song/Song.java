@@ -40,7 +40,7 @@ public record Song(List<Note> notes, int duration) {
 
         public Builder add(Note note) {
             notes.add(note);
-            duration = Math.max(duration, note.duration() + 20);
+            duration = Math.max(duration, note.startTime() + note.duration() + 20);
             return this;
         }
 
