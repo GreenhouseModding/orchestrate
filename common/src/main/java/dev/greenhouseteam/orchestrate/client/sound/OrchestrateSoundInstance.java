@@ -67,14 +67,19 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
         this.elapsedTicks = elapsedDuration;
     }
 
-    // TODO: Use full song class when that's created
     public static OrchestrateSoundInstance createPlayerDependentMaster(Player player, ItemStack stack,
                                                                        Song song, MibSoundSet soundSet, SoundSource source) {
-        // Any sound event being passed here will work, I just chose armadillo because it was funny.
+        return createPlayerDependentMaster(player, stack, song, soundSet, source, 0);
+    }
+
+
+    public static OrchestrateSoundInstance createPlayerDependentMaster(Player player, ItemStack stack,
+                                                                       Song song, MibSoundSet soundSet, SoundSource source,
+                                                                       int elapsedDuration) {
         return new OrchestrateSoundInstance(null,
                 player, stack, OrchestrateSoundEvents.MASTER,
                 song, soundSet, soundSet.getSound(KeyWithOctave.DEFAULT, 1.0F), source,
-                1.0F, 1.0F, song.duration(), 0, false);
+                1.0F, 1.0F, song.duration(), elapsedDuration, false);
     }
 
     public boolean isMaster() {
