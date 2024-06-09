@@ -36,7 +36,7 @@ public class OrchestrateFabric implements ModInitializer {
 
         // TODO: Test code, replace with properly configured code as soon as it's done.
         MibInstrumentEvents.COOLDOWN.register((stack, entity, original) -> 20);
-        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> Orchestrate.createTestSong().duration());
+        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> Orchestrate.createTestSong().duration() + 20);
     }
 
     public static void registerNetwork() {

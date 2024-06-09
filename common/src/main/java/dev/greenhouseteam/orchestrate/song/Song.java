@@ -40,13 +40,13 @@ public record Song(List<Note> notes, int duration) {
 
         public Builder add(Note note) {
             notes.add(note);
-            duration = Math.max(duration, note.startTime() + note.duration() + 20);
+            duration = Math.max(duration, note.startTime() + note.duration());
             return this;
         }
 
         public Builder remove(Note note) {
             notes.remove(note);
-            duration = Math.min(duration, notes.stream().map(Note::duration).max(Comparator.comparingInt(value -> value + 20)).orElse(0));
+            duration = Math.min(duration, notes.stream().map(Note::duration).max(Comparator.comparingInt(value -> value)).orElse(0));
             return this;
         }
 

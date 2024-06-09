@@ -1,13 +1,11 @@
 package dev.greenhouseteam.orchestrate.client.sound;
 
-import dev.greenhouseteam.mib.access.PlayerAccess;
 import dev.greenhouseteam.mib.client.sound.MibSoundInstance;
 import dev.greenhouseteam.mib.data.ExtendedSound;
 import dev.greenhouseteam.mib.data.KeyWithOctave;
 import dev.greenhouseteam.mib.data.MibSoundSet;
 import dev.greenhouseteam.mib.mixin.client.SoundEngineAccessor;
 import dev.greenhouseteam.mib.mixin.client.SoundManagerAccessor;
-import dev.greenhouseteam.orchestrate.Orchestrate;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateSoundEvents;
 import dev.greenhouseteam.orchestrate.song.Note;
 import dev.greenhouseteam.orchestrate.song.Song;
@@ -61,8 +59,6 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
                                        boolean isLooping) {
         super(player, x, y, z, stopPredicate, sound, extendedSound, source, volume, pitch, isLooping);
         this.rootSound = rootSound;
-        if (player != null && rootSound != null)
-            ((PlayerAccess)player).mib$setCurrentSoundInstance(rootSound);
         if (rootSound != null)
             rootSound.children.add(this);
         this.song = song;
@@ -87,6 +83,9 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
 
     @Override
     public void tick() {
+        if (isStopped())
+            return;
+
         replaceWithLoopSoundIfNecessary();
 
         if (handleMasterStop())
@@ -110,47 +109,57 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
             for (Note note : song.notes().stream().filter(note -> note.startTime() == elapsedTicks).toList()) {
                 ExtendedSound sound = soundSet.getSound(note.key(), volume);
                 float pitch = note.key().getPitchFromNote();
-                Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, player, x, y, z, stopPredicate, sound.startSound().value(), song, soundSet, extendedSound, source, volume, pitch, 30, 0, false));
+                Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, player, x, y, z, stopPredicate, sound.sounds().start().value(), song, soundSet, extendedSound, source, note.volume(), pitch, 30, 0, false));
             }
         }
     }
 
     public void replaceWithLoopSoundIfNecessary() {
         SoundEngineAccessor soundEngine = ((SoundEngineAccessor) ((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine());
-        if (!isMaster() && extendedSound.looping() && !hasPlayedLoop && soundEngine.mib$getSoundDeleteTime().containsKey(this) && soundEngine.mib$getSoundDeleteTime().get(this) - 20 + extendedSound.durationBeforeLoop() <= soundEngine.mib$tickCount()) {
-            this.hasPlayedLoop = true;
-            this.shouldPlayStopSound = false;
-            Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this.rootSound, player, x, y, z, stopPredicate, extendedSound.loopSound().orElse(extendedSound.startSound()).value(), song, soundSet, extendedSound, source, volume, pitch, duration, elapsedTicks, true));
+        if (!isMaster() && !hasPlayedLoop && getOrCalculateStartSoundStop() <= soundEngine.mib$getTickCount() && extendedSound.sounds().loop().isPresent()) {
+            hasPlayedLoop = true;
+            shouldPlayStopSound = false;
+            elapsedTicks = 0;
+            stop();
+            ((SoundEngineAccessor)((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine()).mib$getInstanceToChannel().remove(this);
+            Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this.rootSound, player, x, y, z, stopPredicate, extendedSound.sounds().loop().orElse(extendedSound.sounds().start()).value(), song, soundSet, extendedSound, source, volume, pitch, duration, elapsedTicks, true));
         }
     }
 
     public boolean handleStop() {
         SoundEngine soundEngine = ((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine();
         SoundEngineAccessor accessor = (SoundEngineAccessor) soundEngine;
-        if (!isMaster() && (elapsedTicks > duration || (accessor.mib$getSoundDeleteTime().get(this) - 1 <= accessor.mib$tickCount() || player != null && stopPredicate.test(player)))) {
-            if (shouldPlayStopSound && extendedSound.stopSound().isPresent())
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(extendedSound.stopSound().get().value(), this.volume, this.pitch));
+        if (!isMaster() && (elapsedTicks > duration || (accessor.mib$getSoundDeleteTime().get(this) - 1 <= accessor.mib$getTickCount() || player != null && stopPredicate.test(player)))) {
+            if (shouldPlayStopSound && extendedSound.sounds().stop().isPresent())
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(extendedSound.sounds().stop().get().value(), this.volume, this.pitch));
             rootSound.children.remove(this);
             stop();
-            soundEngine.stop(this);
+            elapsedTicks = 0;
             return true;
         }
         return false;
     }
 
     public boolean handleMasterStop() {
-        SoundEngine soundEngine = ((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine();
-        if (isMaster() && (elapsedTicks > duration || player != null && stopPredicate.test(player) || ((PlayerAccess)player).mib$getSoundInstance() != this)) {
+        if (isMaster() && (elapsedTicks > duration || player != null && stopPredicate.test(player))) {
             stopMaster();
-            soundEngine.stop(this);
             return true;
         }
         return false;
     }
 
     public void stopMaster() {
-        children.forEach(OrchestrateSoundInstance::stop);
+        for (OrchestrateSoundInstance child : children) {
+            child.children.remove(this);
+            child.stop();
+        }
         stop();
+        elapsedTicks = 0;
+    }
+
+    @Override
+    public boolean canPlaySound() {
+        return (elapsedTicks <= duration || player == null || !stopPredicate.test(player));
     }
 
     @Override
