@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "orchestrate:block/composition_table_bottom",
+    "top": "orchestrate:block/composition_table_top",
+    "side": "orchestrate:block/composition_table_side"
+  }
+}

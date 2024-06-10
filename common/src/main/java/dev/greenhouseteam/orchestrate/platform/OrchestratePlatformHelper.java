@@ -1,8 +1,11 @@
 package dev.greenhouseteam.orchestrate.platform;
 
+import dev.greenhouseteam.orchestrate.menu.CompositionMenu;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.MenuType;
 
 public interface OrchestratePlatformHelper {
 
@@ -37,6 +40,11 @@ public interface OrchestratePlatformHelper {
 
         return isDevelopmentEnvironment() ? "development" : "production";
     }
+
+    MenuType<CompositionMenu> createCompositionMenu();
+
+    void openCompositionMenu(ServerPlayer player, BlockPos tablePos);
+
     void sendTrackingClientboundPacket(CustomPacketPayload payload, Entity entity);
 
     void sendServerboundPacket(CustomPacketPayload payload);

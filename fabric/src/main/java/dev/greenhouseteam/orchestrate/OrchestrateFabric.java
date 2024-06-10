@@ -3,27 +3,45 @@ package dev.greenhouseteam.orchestrate;
 import dev.greenhouseteam.mib.event.MibInstrumentEvents;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
 import dev.greenhouseteam.orchestrate.network.serverbound.OrchestrateStartPlayingServerboundPacket;
-import dev.greenhouseteam.orchestrate.registry.OrchestrateSoundEvents;
+import dev.greenhouseteam.orchestrate.registry.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 public class OrchestrateFabric implements ModInitializer {
     
     @Override
     public void onInitialize() {
         Orchestrate.init();
-        OrchestrateSoundEvents.registerAll(Registry::register);
+        registerContents();
         registerEvents();
         registerNetwork();
     }
 
+    public static void registerContents() {
+        OrchestrateBlocks.registerAll(Registry::register);
+        OrchestrateBlockEntityTypes.registerAll(Registry::register);
+        OrchestrateItems.registerAll(Registry::register);
+        OrchestrateMenuTypes.registerAll(Registry::register);
+        OrchestrateSoundEvents.registerAll(Registry::register);
+    }
+
     public static void registerEvents() {
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(entries ->
+                entries.addAfter(Items.JUKEBOX, OrchestrateItems.COMPOSITION_TABLE));
+
         UseItemCallback.EVENT.register((player, world, hand) -> {
             ItemStack stack = player.getItemInHand(hand);
             if (player.getCooldowns().isOnCooldown(stack.getItem()))
@@ -36,7 +54,7 @@ public class OrchestrateFabric implements ModInitializer {
 
         // TODO: Test code, replace with properly configured code as soon as it's done.
         MibInstrumentEvents.COOLDOWN.register((stack, entity, original) -> 20);
-        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> Orchestrate.createTestSong().duration() + 20);
+        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> Orchestrate.createParticleAccelerator().duration() + 20);
     }
 
     public static void registerNetwork() {

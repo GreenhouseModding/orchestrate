@@ -53,18 +53,32 @@ public class Orchestrate {
 
         if (!player.level().isClientSide()) {
             player.startUsingItem(hand);
-            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(player.getId(), hand == InteractionHand.OFF_HAND, createTestSong(), instrument.get()), player);
+            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(player.getId(), hand == InteractionHand.OFF_HAND, createParticleAccelerator(), instrument.get()), player);
             player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
         }
         return InteractionResultHolder.consume(stack);
     }
 
+    // TODO: Remove these when testing is no longer a thing.
     public static Song createTestSong() {
         Song.Builder builder = new Song.Builder();
-        for (int i = 0; i < Key.values().length * 5; ++i) {
-            int octave = (i / 12) + 1;
+        for (int i = 0; i < Key.values().length * 3; ++i) {
+            int octave = (i / 12) + 2;
             int index = i % 12;
-            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 0.05F + ((float) i / (Key.values().length * 5)), i, 3));
+            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 0.2F + ((float) i / (Key.values().length * 3)), i * 40, 40));
+        }
+        return builder.build();
+    }
+
+    public static Song createParticleAccelerator() {
+        Song.Builder builder = new Song.Builder();
+        int previousStartTime = 0;
+        for (int i = 0; i < Key.values().length * 3; ++i) {
+            int octave = (i / 12) + 3;
+            int index = i % 12;
+            int duration = 20 - (int)(i * 0.56);
+            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 1.0F, previousStartTime, duration));
+            previousStartTime = previousStartTime + duration;
         }
         return builder.build();
     }

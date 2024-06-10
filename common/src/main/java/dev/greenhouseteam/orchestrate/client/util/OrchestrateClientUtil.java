@@ -15,7 +15,7 @@ public class OrchestrateClientUtil {
 
     public static void playSong(Player player, InteractionHand hand, Song song, MibSoundSet set) {
         Minecraft.getInstance().getSoundManager().play(
-                OrchestrateSoundInstance.createPlayerDependentMaster(player, player.getItemInHand(hand), song, set, player.getSoundSource())
+                OrchestrateSoundInstance.createEntityDependentMaster(player, player.getItemInHand(hand), song, set)
         );
     }
 }

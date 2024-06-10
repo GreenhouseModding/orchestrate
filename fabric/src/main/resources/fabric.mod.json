@@ -25,6 +25,9 @@
         "client": [
             "dev.greenhouseteam.orchestrate.client.OrchestrateFabricClient"
         ],
+        "fabric-datagen": [
+            "dev.greenhouseteam.orchestrate.datagen.OrchestrateDatagen"
+        ],
         "preLaunch": [
             "dev.greenhouseteam.orchestrate.OrchestrateFabricPreLaunch"
         ]

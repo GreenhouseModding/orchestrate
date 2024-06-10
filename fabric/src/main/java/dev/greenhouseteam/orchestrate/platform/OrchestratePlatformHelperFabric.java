@@ -1,13 +1,17 @@
 package dev.greenhouseteam.orchestrate.platform;
 
+import dev.greenhouseteam.orchestrate.menu.CompositionMenu;
+import dev.greenhouseteam.orchestrate.util.CompositionExtendedMenuFactory;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.MenuType;
 
 import java.util.Collection;
 
@@ -28,6 +32,16 @@ public class OrchestratePlatformHelperFabric implements OrchestratePlatformHelpe
     public boolean isDevelopmentEnvironment() {
 
         return FabricLoader.getInstance().isDevelopmentEnvironment();
+    }
+
+    @Override
+    public MenuType<CompositionMenu> createCompositionMenu() {
+        return new ExtendedScreenHandlerType<>((syncId, inventory, pos) -> new CompositionMenu(CompositionMenu.getBlockEntity(inventory, pos), inventory, syncId), BlockPos.STREAM_CODEC);
+    }
+
+    @Override
+    public void openCompositionMenu(ServerPlayer player, BlockPos tablePos) {
+        player.openMenu(new CompositionExtendedMenuFactory(tablePos));
     }
 
     @Override

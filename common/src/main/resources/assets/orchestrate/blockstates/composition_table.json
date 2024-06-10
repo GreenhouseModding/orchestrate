@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "orchestrate:block/composition_table"
+    }
+  }
+}

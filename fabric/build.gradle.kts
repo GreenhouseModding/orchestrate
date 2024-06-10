@@ -54,5 +54,15 @@ loom {
             ideConfigGenerated(true)
             vmArgs("-Dmixin.debug.verbose=true", "-Dmixin.debug.export=true")
         }
+        register("datagen") {
+            server()
+            configName = "Fabric Datagen"
+            setSource(sourceSets["test"])
+            ideConfigGenerated(true)
+            vmArg("-Dfabric-api.datagen")
+            vmArg("-Dfabric-api.datagen.output-dir=${file("../common/src/generated/resources")}")
+            vmArg("-Dfabric-api.datagen.modid=${Properties.MOD_ID}")
+            runDir("build/datagen")
+        }
     }
 }
