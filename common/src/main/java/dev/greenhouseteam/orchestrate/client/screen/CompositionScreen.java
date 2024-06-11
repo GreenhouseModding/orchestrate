@@ -25,10 +25,8 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
     @Override
     protected void init() {
         super.init();
-        for (int i = 0; i < CompositionMenu.INPUT_SLOT_SIZE; ++i) {
-            ToggleButton toggle = new ToggleButton(i);
-            addRenderableWidget(toggle);
-        }
+        for (int i = 0; i < CompositionMenu.INPUT_SLOT_SIZE; ++i)
+            addRenderableWidget(new ToggleButton(i));
     }
 
     @Override
@@ -52,7 +50,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
 
         @Override
         public void onPress() {
-            if (!menu.slots.get(index).isActive() || menu.getActiveSlot() == index)
+            if (!menu.slots.get(index).isActive() || !menu.slots.get(index).hasItem() || menu.getActiveSlot() == index)
                 return;
 
             menu.setActiveSlot(index);
@@ -64,7 +62,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                 return;
 
             ResourceLocation spriteLoc;
-            if (this.isHoveredOrFocused())
+            if (this.isHovered() && menu.slots.get(index).hasItem())
                 spriteLoc = Orchestrate.asResource("container/composition_table/layer_" + (index + 1) + "_button_highlighted");
             else if (menu.getActiveSlot() != index)
                 spriteLoc = Orchestrate.asResource("container/composition_table/layer_" + (index + 1) + "_button_disabled");
@@ -75,8 +73,8 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         }
 
         @Override
-        public void updateWidgetNarration(NarrationElementOutput $$0) {
-            this.defaultButtonNarrationText($$0);
+        public void updateWidgetNarration(NarrationElementOutput output) {
+            this.defaultButtonNarrationText(output);
         }
     }
 }

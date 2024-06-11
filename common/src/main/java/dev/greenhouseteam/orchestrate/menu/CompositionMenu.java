@@ -114,6 +114,8 @@ public class CompositionMenu extends AbstractContainerMenu {
     }
 
     public void setActiveSlot(int slot) {
+        if (getFilledInputs() < slot + 1)
+            return;
         activeSlot.set(slot);
     }
 
