@@ -21,6 +21,8 @@ public class CompositionMenu extends AbstractContainerMenu {
             super.setChanged();
             if (previousFilledInputs != getHighestInputSlotWithItem())
                 filledInputs.set(Mth.clamp(getHighestInputSlotWithItem() + 1, 0, 4));
+            if (!slots.get(getActiveSlot()).hasItem())
+                setActiveSlot(Mth.clamp(getHighestInputSlotWithItem(), 0, 4));
         }
     };
     public static final int MAX_SLOT_SIZE = 6;
@@ -66,11 +68,6 @@ public class CompositionMenu extends AbstractContainerMenu {
             });
         }
         addSlot(new Slot(itemContainer, 5, 156, 107) {
-            @Override
-            public void onTake(Player player, ItemStack stack) {
-                slots.get(getActiveSlot()).setChanged();
-            }
-
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;

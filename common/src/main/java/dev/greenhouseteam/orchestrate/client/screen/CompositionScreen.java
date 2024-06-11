@@ -73,6 +73,11 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         }
 
         @Override
+        protected boolean clicked(double x, double y) {
+            return  menu.slots.get(index).isActive() && menu.slots.get(index).hasItem() && menu.getActiveSlot() != index && super.clicked(x, y);
+        }
+
+        @Override
         public void updateWidgetNarration(NarrationElementOutput output) {
             this.defaultButtonNarrationText(output);
         }
