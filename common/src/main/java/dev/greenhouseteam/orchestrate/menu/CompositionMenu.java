@@ -21,8 +21,10 @@ public class CompositionMenu extends AbstractContainerMenu {
             super.setChanged();
             if (previousFilledInputs != getHighestInputSlotWithItem())
                 filledInputs.set(Mth.clamp(getHighestInputSlotWithItem() + 1, 0, 4));
-            if (!slots.get(getActiveSlot()).hasItem())
-                setActiveSlot(Mth.clamp(getHighestInputSlotWithItem(), 0, 4));
+            if (getActiveSlot() == -1 && slots.getFirst().hasItem()) {
+                setActiveSlot(0);
+            } else if (getActiveSlot() > -1 && !slots.get(getActiveSlot()).hasItem())
+                setActiveSlot(Mth.clamp(getHighestInputSlotWithItem(), -1, 4));
         }
     };
     public static final int MAX_SLOT_SIZE = 6;
@@ -79,7 +81,7 @@ public class CompositionMenu extends AbstractContainerMenu {
             }
         });
         createInventorySlots(inventory);
-        activeSlot.set(0);
+        activeSlot.set(-1);
         addDataSlot(activeSlot);
         filledInputs.set(0);
         addDataSlot(filledInputs);
@@ -111,7 +113,7 @@ public class CompositionMenu extends AbstractContainerMenu {
     }
 
     public void setActiveSlot(int slot) {
-        if (getFilledInputs() < slot + 1)
+        if (getFilledInputs() < slot)
             return;
         activeSlot.set(slot);
     }
