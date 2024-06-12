@@ -5,11 +5,7 @@
   "refmap": "${mod_id}.refmap.json",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ServerPlayerAccessor"
   ],
-  "client": [
-  ],
-  "server": [],
   "injectors": {
     "defaultRequire": 1
   }

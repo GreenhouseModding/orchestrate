@@ -24,10 +24,10 @@ public record OrchestrateStartPlayingClientboundPacket(int entityId, boolean off
     }
 
     public static void write(RegistryFriendlyByteBuf buf, OrchestrateStartPlayingClientboundPacket packet) {
-         buf.writeInt(packet.entityId);
-         buf.writeBoolean(packet.offhand);
-         Song.STREAM_CODEC.encode(buf, packet.song);
-         MibSoundSet.STREAM_CODEC.encode(buf, packet.set);
+        buf.writeInt(packet.entityId);
+        buf.writeBoolean(packet.offhand);
+        Song.STREAM_CODEC.encode(buf, packet.song);
+        MibSoundSet.STREAM_CODEC.encode(buf, packet.set);
     }
 
     public void handle() {

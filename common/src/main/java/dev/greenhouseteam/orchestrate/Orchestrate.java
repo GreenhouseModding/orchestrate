@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -42,19 +43,20 @@ public class Orchestrate {
     }
 
     // TODO: Use new component for storing songs.
-    public static InteractionResultHolder<ItemStack> playSong(Player player, ItemStack stack, InteractionHand hand) {
+    public static InteractionResultHolder<ItemStack> playSong(LivingEntity living, ItemStack stack, InteractionHand hand) {
         if (!(stack.getItem() instanceof MibInstrumentItem) && !stack.has(MibComponents.INSTRUMENT))
             return InteractionResultHolder.pass(stack);
 
         ItemInstrument instrumentComponent = stack.get(MibComponents.INSTRUMENT);
-        var instrument = instrumentComponent.sound().unwrap(player.level().registryAccess());
+        var instrument = instrumentComponent.sound().unwrap(living.level().registryAccess());
         if (instrument.isEmpty())
             return InteractionResultHolder.pass(stack);
 
-        if (!player.level().isClientSide()) {
-            player.startUsingItem(hand);
-            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(player.getId(), hand == InteractionHand.OFF_HAND, createParticleAccelerator(), instrument.get()), player);
-            player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
+        living.startUsingItem(hand);
+        if (!living.level().isClientSide()) {
+            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(living.getId(), hand == InteractionHand.OFF_HAND, createParticleAccelerator(), instrument.get()), living);
+            if (living instanceof Player player)
+                player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
         }
         return InteractionResultHolder.consume(stack);
     }

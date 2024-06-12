@@ -34,7 +34,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         graphics.blit(BACKGROUND_LOCATION, leftPos, topPos, 0, 0, this.imageWidth, this.imageHeight);
         for (int i = 0; i < CompositionMenu.INPUT_SLOT_SIZE; ++i) {
             if (menu.slots.get(i).isActive()) {
-                graphics.blitSprite(Orchestrate.asResource("container/composition_table/layer_" + (i + 1) + "_icon"), leftPos + 6, topPos + 14 + (i * 20), 7, 9);
+                graphics.blitSprite(Orchestrate.asResource("container/composition_table/layer/layer_" + (i + 1) + "_icon"), leftPos + 6, topPos + 14 + (i * 20), 7, 9);
                 graphics.blitSprite(Orchestrate.asResource("container/composition_table/slot"), leftPos + 14, topPos + 14 + (i * 20), 18, 18);
             }
         }
@@ -63,11 +63,11 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
 
             ResourceLocation spriteLoc;
             if (this.isHovered() && menu.slots.get(index).hasItem())
-                spriteLoc = Orchestrate.asResource("container/composition_table/layer_" + (index + 1) + "_button_highlighted");
+                spriteLoc = Orchestrate.asResource("container/composition_table/layer/layer_" + (index + 1) + "_button_highlighted");
             else if (menu.getActiveSlot() != index)
-                spriteLoc = Orchestrate.asResource("container/composition_table/layer_" + (index + 1) + "_button_disabled");
+                spriteLoc = Orchestrate.asResource("container/composition_table/layer/layer_" + (index + 1) + "_button_disabled");
             else
-                spriteLoc = Orchestrate.asResource("container/composition_table/layer_" + (index + 1) + "_button");
+                spriteLoc = Orchestrate.asResource("container/composition_table/layer/layer_" + (index + 1) + "_button");
 
             graphics.blitSprite(spriteLoc, this.getX(), this.getY(), this.width, this.height);
         }

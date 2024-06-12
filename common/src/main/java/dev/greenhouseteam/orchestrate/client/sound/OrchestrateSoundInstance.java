@@ -9,14 +9,17 @@ import dev.greenhouseteam.mib.mixin.client.SoundManagerAccessor;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateSoundEvents;
 import dev.greenhouseteam.orchestrate.song.Note;
 import dev.greenhouseteam.orchestrate.song.Song;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public class OrchestrateSoundInstance extends MibSoundInstance {
@@ -25,25 +28,27 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     private final List<OrchestrateSoundInstance> children = new ArrayList<>();
 
     private final Song song;
+    private final List<Note> remainingNotes;
     private final MibSoundSet soundSet;
-    private final int duration;
-    private int elapsedTicks;
+    private final float duration;
+    private float elapsedTicks;
 
     protected OrchestrateSoundInstance(@Nullable OrchestrateSoundInstance rootSound,
                                        double x, double y, double z, SoundEvent sound,
                                        Song song, MibSoundSet soundSet,
                                        ExtendedSound extendedSound,
-                                       float volume, float pitch, int duration, int elapsedDuration,
-                                       boolean isLooping, boolean shouldPlayLoopSound, boolean shouldFade) {
-        this(rootSound, null, x, y, z, p -> true, sound, song, soundSet, extendedSound, volume, pitch, duration, elapsedDuration, isLooping, shouldPlayLoopSound, shouldFade);
+                                       float volume, float pitch, float duration, float elapsedDuration,
+                                       boolean isLooping, boolean shouldPlayLoopSound) {
+        this(rootSound, null, x, y, z, p -> false, sound, song, soundSet, extendedSound, volume, pitch, duration, elapsedDuration, isLooping, shouldPlayLoopSound);
     }
 
     protected OrchestrateSoundInstance(@Nullable OrchestrateSoundInstance masterSound,
                                        LivingEntity living, ItemStack stack, SoundEvent sound, Song song,
                                        MibSoundSet soundSet, ExtendedSound extendedSound,
-                                       float volume, float pitch, int duration, int elapsedDuration,
-                                       boolean isLooping, boolean shouldPlayLoopSound, boolean shouldFade) {
-        this(masterSound, living, living.getX(), living.getY(), living.getZ(), p -> !p.isUsingItem() || p.getUseItem() != stack, sound, song, soundSet, extendedSound, volume, pitch, duration, elapsedDuration, isLooping, shouldPlayLoopSound, shouldFade);
+                                       float volume, float pitch, float duration, float elapsedDuration,
+                                       boolean isLooping, boolean shouldPlayLoopSound) {
+        this(masterSound, living, living.getX(), living.getY(), living.getZ(),
+                p -> !p.isUsingItem() || p.getUseItem() != stack, sound, song, soundSet, extendedSound, volume, pitch, duration, elapsedDuration, isLooping, shouldPlayLoopSound);
     }
 
     protected OrchestrateSoundInstance(@Nullable OrchestrateSoundInstance rootSound,
@@ -52,13 +57,14 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
                                        Predicate<LivingEntity> stopPredicate,
                                        SoundEvent sound,
                                        Song song, MibSoundSet soundSet, ExtendedSound extendedSound,
-                                       float volume, float pitch, int duration, int elapsedDuration,
-                                       boolean isLooping, boolean shouldPlayLoopSound, boolean shouldFade) {
-        super(living, x, y, z, stopPredicate, sound, extendedSound, volume, pitch, isLooping, shouldPlayLoopSound, shouldFade);
+                                       float volume, float pitch, float duration, float elapsedDuration,
+                                       boolean isLooping, boolean shouldPlayLoopSound) {
+        super(living, x, y, z, stopPredicate, sound, extendedSound, volume, pitch, isLooping, shouldPlayLoopSound);
         this.rootSound = rootSound;
         if (rootSound != null)
             rootSound.children.add(this);
         this.song = song;
+        this.remainingNotes = new ArrayList<>(song.notes());
         this.soundSet = soundSet;
         this.duration = duration;
         this.elapsedTicks = elapsedDuration;
@@ -76,7 +82,7 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
         return new OrchestrateSoundInstance(null,
                 living, stack, OrchestrateSoundEvents.MASTER,
                 song, soundSet, soundSet.getSound(KeyWithOctave.DEFAULT, 1.0F),
-                1.0F, 1.0F, song.duration(), elapsedDuration, false, false, false);
+                1.0F, 1.0F, song.duration(), elapsedDuration, false, false);
     }
 
     public boolean isMaster() {
@@ -84,18 +90,16 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     }
 
     @Override
-    public void tick() {
-        if (isStopped())
-            return;
-
+    public void bypassingTick(long ticks, DeltaTracker delta) {
         if (handleMasterStop())
             return;
-        if (handleStop())
-            return;
 
-        replaceWithLoopSoundIfNecessary();
+        replaceWithLoopSoundIfNecessary(ticks, delta);
 
         playNewNotes();
+
+        if (handleStop())
+            return;
 
         if (living != null) {
             this.x = living.getX();
@@ -106,39 +110,44 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
         if (shouldFade && extendedSound.fadeSpeed().isPresent())
             volume = Math.clamp(volume - (extendedSound.fadeSpeed().get().sample(random) * pitch * initialVolume), 0.0F, 1.0F);
 
-        ++elapsedTicks;
+        elapsedTicks += delta.getGameTimeDeltaTicks();
     }
 
     public void playNewNotes() {
         if (isMaster()) {
-            for (Note note : song.notes().stream().filter(note -> note.startTime() == elapsedTicks).toList()) {
+            for (Note note : remainingNotes.stream().filter(note -> note.startTime() <= elapsedTicks).toList()) {
+                remainingNotes.remove(note);
                 ExtendedSound sound = soundSet.getSound(note.key(), volume);
                 if (sound == null)
                     return;
                 float pitch = note.key().getPitchFromNote();
-                Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, living, x, y, z, stopPredicate, sound.sounds().start().value(), song, soundSet, sound, note.volume(), pitch, note.duration(), 0, false, true, false));
+                Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, living, x, y, z, stopPredicate, sound.sounds().start().value(), song, soundSet, sound, note.volume(), pitch, note.duration(), 0, false, true));
+
             }
         }
     }
 
-    public void replaceWithLoopSoundIfNecessary() {
-        SoundEngineAccessor soundEngine = ((SoundEngineAccessor) ((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine());
-        if (!isMaster() && !hasPlayedLoop && getOrCalculateStartSoundStop() <= soundEngine.mib$getTickCount() && extendedSound.sounds().loop().isPresent()) {
+    public void replaceWithLoopSoundIfNecessary(long ticks, DeltaTracker delta) {
+        if (!isMaster() && !hasPlayedLoop && getTickDuration(ticks, delta) - 0.2 <= ((float)ticks + delta.getGameTimeDeltaTicks()) && extendedSound.sounds().loop().isPresent()) {
             hasPlayedLoop = true;
             shouldPlayStopSound = false;
             elapsedTicks = 0;
-            Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(rootSound, living, x, y, z, stopPredicate, extendedSound.sounds().loop().orElse(extendedSound.sounds().start()).value(), song, soundSet, extendedSound, volume, pitch, duration, elapsedTicks, true, false, true));
-            stop();
+            Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(rootSound, living, x, y, z, stopPredicate, extendedSound.sounds().loop().orElse(extendedSound.sounds().start()).value(), song, soundSet, extendedSound, volume, pitch, duration, elapsedTicks, true, false));
+            stopAndClear();
         }
     }
 
     public boolean handleStop() {
         if (elapsedTicks > duration || living != null && stopPredicate.test(living)) {
-            if (shouldPlayStopSound && extendedSound.sounds().stop().isPresent())
-                Minecraft.getInstance().getSoundManager().play(new MibSoundInstance(living, x, y, z, stopPredicate, extendedSound.sounds().stop().get().value(), extendedSound, this.volume, this.pitch, false, false, false));
-            rootSound.children.remove(this);
-            stop();
-            elapsedTicks = 0;
+            if (shouldPlayStopSound && extendedSound.sounds().stop().isPresent()) {
+                if (living != null)
+                    Minecraft.getInstance().getSoundManager().play(MibSoundInstance.createEntityDependentStopSound(living, stopPredicate, extendedSound, volume, pitch));
+                else
+                    Minecraft.getInstance().getSoundManager().play(MibSoundInstance.createPosDependentStopSound(new Vec3(x, y, z), extendedSound, volume, pitch));
+            }
+            if (rootSound != null)
+                rootSound.children.remove(this);
+            stopAndClear();
             return true;
         }
         return false;
@@ -155,9 +164,11 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     public void stopMaster() {
         for (OrchestrateSoundInstance child : children) {
             child.children.remove(this);
-            child.stop();
+            child.stopAndClear();
         }
-        stop();
+        stopAndClear();
+        ((SoundEngineAccessor)((SoundManagerAccessor)Minecraft.getInstance().getSoundManager()).mib$getSoundEngine()).mib$getInstanceToChannel().remove(this);
+
         elapsedTicks = 0;
     }
 
@@ -169,5 +180,19 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     @Override
     public boolean canStartSilent() {
         return true;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other == this)
+            return true;
+        if (!(other instanceof OrchestrateSoundInstance inst))
+            return false;
+        return inst.isMaster() == isMaster() && inst.song.equals(song) && super.equals(other);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(song, sound, extendedSound, pitch);
     }
 }

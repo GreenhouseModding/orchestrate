@@ -9,10 +9,6 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
-import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
-import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -54,7 +50,7 @@ public class OrchestrateFabric implements ModInitializer {
 
         // TODO: Test code, replace with properly configured code as soon as it's done.
         MibInstrumentEvents.COOLDOWN.register((stack, entity, original) -> 20);
-        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> Orchestrate.createParticleAccelerator().duration() + 20);
+        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> (int)Orchestrate.createParticleAccelerator().duration() + 20);
     }
 
     public static void registerNetwork() {

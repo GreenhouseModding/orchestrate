@@ -1,11 +1,11 @@
-import dev.greenhouseteam.mib.gradle.Properties
-import dev.greenhouseteam.mib.gradle.Versions
+import dev.greenhouseteam.orchestrate.gradle.Properties
+import dev.greenhouseteam.orchestrate.gradle.Versions
 import net.neoforged.gradle.dsl.common.runs.ide.extensions.IdeaRunExtension
 import org.apache.tools.ant.filters.LineContains
 
 plugins {
-    id("mib.loader")
-    id("net.neoforged.gradle.userdev") version "7.0.138"
+    id("orchestrate.loader")
+    id("net.neoforged.gradle.userdev") version "7.0.142"
 }
 
 val at = file("src/main/resources/${Properties.MOD_ID}.cfg")
@@ -30,8 +30,21 @@ runs {
     }
 }
 
+repositories {
+    maven("https://prmaven.neoforged.net/NeoForge/pr1076") {
+        name = "Maven for PR #1076" // https://github.com/neoforged/NeoForge/pull/1076
+        content {
+            includeModule("net.neoforged", "testframework")
+            includeModule("net.neoforged", "neoforge")
+        }
+    }
+    mavenLocal()
+}
+
 dependencies {
     implementation("net.neoforged:neoforge:${Versions.NEOFORGE}")
+
+    implementation("dev.greenhouseteam:mib-neoforge:${Versions.MIB}+${Versions.MINECRAFT}")
 }
 
 tasks {

@@ -12,13 +12,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public record Song(Component name, Component author, List<Note> notes, int duration) {
+public record Song(Component name, Component author, List<Note> notes, float duration) {
     public static final Song DEFAULT = new Song(Component.literal("Unnamed Song"), Component.literal("Unnamed Author"), List.of(), 0);
     public static final Codec<Song> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             ComponentSerialization.CODEC.fieldOf("name").forGetter(Song::name),
             ComponentSerialization.CODEC.fieldOf("author").forGetter(Song::author),
             Note.CODEC.listOf().optionalFieldOf("notes", List.of()).forGetter(Song::notes),
-            Codec.INT.fieldOf("duration").forGetter(Song::duration)
+            Codec.FLOAT.fieldOf("duration").forGetter(Song::duration)
     ).apply(inst, Song::new));
     public static final StreamCodec<RegistryFriendlyByteBuf, Song> STREAM_CODEC = StreamCodec.composite(
             ComponentSerialization.STREAM_CODEC,
@@ -27,7 +27,7 @@ public record Song(Component name, Component author, List<Note> notes, int durat
             Song::author,
             Note.STREAM_CODEC.apply(ByteBufCodecs.list()),
             Song::notes,
-            ByteBufCodecs.INT,
+            ByteBufCodecs.FLOAT,
             Song::duration,
             Song::new
     );
@@ -40,7 +40,7 @@ public record Song(Component name, Component author, List<Note> notes, int durat
         private Component name = Component.literal("Unnamed Song");
         private Component author = Component.literal("Unnamed Author");
         private final List<Note> notes = new ArrayList<>();
-        private int duration;
+        private float duration;
 
         public static Builder fromSong(Song song) {
             Builder builder = new Builder();
@@ -81,11 +81,11 @@ public record Song(Component name, Component author, List<Note> notes, int durat
 
         public Builder remove(Note note) {
             notes.remove(note);
-            duration = Math.min(duration, notes.stream().map(value -> value.startTime() + value.duration()).max(Comparator.comparingInt(value -> value)).orElse(0));
+            duration = Math.min(duration, notes.stream().map(value -> value.startTime() + value.duration()).max(Comparator.comparingDouble(value -> value)).orElse(0F));
             return this;
         }
 
-        public int getDuration() {
+        public float getDuration() {
             return duration;
         }
 
