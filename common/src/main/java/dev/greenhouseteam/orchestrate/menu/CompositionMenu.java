@@ -31,6 +31,7 @@ public class CompositionMenu extends AbstractContainerMenu {
     public static final int INPUT_SLOT_SIZE = 5;
     public static final int OUTPUT_SLOT = 5;
 
+    private final CompositionTableBlockEntity blockEntity;
     private final ContainerLevelAccess access;
     private int previousFilledInputs = 0;
 
@@ -43,6 +44,7 @@ public class CompositionMenu extends AbstractContainerMenu {
 
     public CompositionMenu(CompositionTableBlockEntity blockEntity, Inventory inventory, int syncId) {
         super(OrchestrateMenuTypes.COMPOSITION_TABLE, syncId);
+        this.blockEntity = blockEntity;
         this.access = ContainerLevelAccess.create(blockEntity.getLevel(), blockEntity.getBlockPos());
         for (int i = 0; i < INPUT_SLOT_SIZE; ++i) {
             int finalI = i;
@@ -106,6 +108,10 @@ public class CompositionMenu extends AbstractContainerMenu {
         if (!(be instanceof CompositionTableBlockEntity composition))
             throw new IllegalStateException("Expected Composition block entity but got the wrong block entity.");
         return composition;
+    }
+
+    public BlockPos getPos() {
+        return blockEntity.getBlockPos();
     }
 
     public int getFilledInputs() {

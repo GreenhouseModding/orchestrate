@@ -128,8 +128,8 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     }
 
     public void replaceWithLoopSoundIfNecessary(long ticks, DeltaTracker delta) {
-        if (!isMaster() && !hasPlayedLoop && getTickDuration(ticks, delta) - 0.2 <= ((float)ticks + delta.getGameTimeDeltaTicks()) && extendedSound.sounds().loop().isPresent()) {
-            hasPlayedLoop = true;
+        if (!isMaster() && shouldPlayLoop && getTickDuration(ticks, delta) - 0.2 <= ((float)ticks + delta.getGameTimeDeltaTicks()) && extendedSound.sounds().loop().isPresent()) {
+            shouldPlayLoop = false;
             shouldPlayStopSound = false;
             elapsedTicks = 0;
             Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(rootSound, living, x, y, z, stopPredicate, extendedSound.sounds().loop().orElse(extendedSound.sounds().start()).value(), song, soundSet, extendedSound, volume, pitch, duration, elapsedTicks, true, false));
@@ -180,19 +180,5 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
     @Override
     public boolean canStartSilent() {
         return true;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (other == this)
-            return true;
-        if (!(other instanceof OrchestrateSoundInstance inst))
-            return false;
-        return inst.isMaster() == isMaster() && inst.song.equals(song) && super.equals(other);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(song, sound, extendedSound, pitch);
     }
 }
