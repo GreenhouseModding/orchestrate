@@ -4,7 +4,7 @@ object Versions {
     const val MOD = "1.0.0-alpha.1"
 
     const val MINECRAFT = "1.21"
-    const val INTERNAL_MINECRAFT = "1.21-rc1"
+    const val INTERNAL_MINECRAFT = "1.21"
 
     const val MIB = "1.0.0-alpha.1"
 
@@ -14,7 +14,7 @@ object Versions {
     const val FABRIC_LOADER_RANGE = ">=0.15"
     const val FABRIC_MINECRAFT_RANGE = ">=1.21-"
 
-    const val NEOFORGE = "21.0.0-alpha.1.21-rc1.20240611.222608"
+    const val NEOFORGE = "21.0.0-beta"
     const val NEOFORGE_LOADER_RANGE = "[3,)"
     const val NEOFORGE_MINECRAFT_RANGE = "[1.21,)"
 
