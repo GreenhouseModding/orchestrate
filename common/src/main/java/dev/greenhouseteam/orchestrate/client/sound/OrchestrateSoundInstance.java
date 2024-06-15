@@ -19,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
 
 public class OrchestrateSoundInstance extends MibSoundInstance {
@@ -59,7 +58,7 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
                                        Song song, MibSoundSet soundSet, ExtendedSound extendedSound,
                                        float volume, float pitch, float duration, float elapsedDuration,
                                        boolean isLooping, boolean shouldPlayLoopSound) {
-        super(living, x, y, z, stopPredicate, sound, extendedSound, volume, pitch, isLooping, shouldPlayLoopSound);
+        super(living, x, y, z, stopPredicate, sound, extendedSound, volume, pitch, isLooping, shouldPlayLoopSound, false);
         this.rootSound = rootSound;
         if (rootSound != null)
             rootSound.children.add(this);
