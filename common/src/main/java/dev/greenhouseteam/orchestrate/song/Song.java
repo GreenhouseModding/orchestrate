@@ -7,18 +7,22 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipProvider;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
 
-public record Song(Component name, Component author, List<Note> notes, float duration) {
+public record Song(Component name, Component author, List<Note> notes, int duration) implements TooltipProvider {
     public static final Song DEFAULT = new Song(Component.literal("Unnamed Song"), Component.literal("Unnamed Author"), List.of(), 0);
     public static final Codec<Song> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             ComponentSerialization.CODEC.fieldOf("name").forGetter(Song::name),
             ComponentSerialization.CODEC.fieldOf("author").forGetter(Song::author),
             Note.CODEC.listOf().optionalFieldOf("notes", List.of()).forGetter(Song::notes),
-            Codec.FLOAT.fieldOf("duration").forGetter(Song::duration)
+            Codec.INT.fieldOf("duration").forGetter(Song::duration)
     ).apply(inst, Song::new));
     public static final StreamCodec<RegistryFriendlyByteBuf, Song> STREAM_CODEC = StreamCodec.composite(
             ComponentSerialization.STREAM_CODEC,
@@ -27,7 +31,7 @@ public record Song(Component name, Component author, List<Note> notes, float dur
             Song::author,
             Note.STREAM_CODEC.apply(ByteBufCodecs.list()),
             Song::notes,
-            ByteBufCodecs.FLOAT,
+            ByteBufCodecs.INT,
             Song::duration,
             Song::new
     );
@@ -36,11 +40,16 @@ public record Song(Component name, Component author, List<Note> notes, float dur
         return !notes.isEmpty();
     }
 
+    @Override
+    public void addToTooltip(Item.TooltipContext context, Consumer<Component> consumer, TooltipFlag tooltipFlag) {
+        consumer.accept(Component.translatable("item.orchestrate.author", author));
+    }
+
     public static class Builder {
         private Component name = Component.literal("Unnamed Song");
         private Component author = Component.literal("Unnamed Author");
         private final List<Note> notes = new ArrayList<>();
-        private float duration;
+        private int duration;
 
         public static Builder fromSong(Song song) {
             Builder builder = new Builder();
@@ -81,11 +90,11 @@ public record Song(Component name, Component author, List<Note> notes, float dur
 
         public Builder remove(Note note) {
             notes.remove(note);
-            duration = Math.min(duration, notes.stream().map(value -> value.startTime() + value.duration()).max(Comparator.comparingDouble(value -> value)).orElse(0F));
+            duration = Math.min(duration, notes.stream().map(value -> value.startTime() + value.duration()).max(Comparator.comparingDouble(value -> value)).orElse(0));
             return this;
         }
 
-        public float getDuration() {
+        public int getDuration() {
             return duration;
         }
 

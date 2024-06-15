@@ -6,6 +6,7 @@ import dev.greenhouseteam.orchestrate.util.CompositionExtendedMenuFactory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -41,6 +42,11 @@ public class OrchestratePlatformHelperNeoForge implements OrchestratePlatformHel
     @Override
     public void openCompositionMenu(ServerPlayer player, BlockPos tablePos) {
         player.openMenu((CompositionTableBlockEntity)player.level().getBlockEntity(tablePos), tablePos);
+    }
+
+    @Override
+    public void sendClientboundPacket(CustomPacketPayload payload, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, payload);
     }
 
     @Override

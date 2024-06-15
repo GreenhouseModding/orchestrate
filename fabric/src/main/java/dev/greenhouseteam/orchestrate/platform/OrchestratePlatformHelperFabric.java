@@ -45,6 +45,11 @@ public class OrchestratePlatformHelperFabric implements OrchestratePlatformHelpe
     }
 
     @Override
+    public void sendClientboundPacket(CustomPacketPayload payload, ServerPlayer player) {
+        ServerPlayNetworking.send(player, payload);
+    }
+
+    @Override
     public void sendTrackingClientboundPacket(CustomPacketPayload payload, Entity entity) {
         Collection<ServerPlayer> players = PlayerLookup.tracking(entity);
         for (ServerPlayer other : players) {

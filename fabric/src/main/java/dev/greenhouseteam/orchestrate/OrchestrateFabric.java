@@ -2,7 +2,11 @@ package dev.greenhouseteam.orchestrate;
 
 import dev.greenhouseteam.mib.event.MibInstrumentEvents;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
+import dev.greenhouseteam.orchestrate.network.clientbound.UpdateSongClientboundPacket;
 import dev.greenhouseteam.orchestrate.network.serverbound.OrchestrateStartPlayingServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateAuthorServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateNameServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateNotesServerboundPacket;
 import dev.greenhouseteam.orchestrate.registry.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -29,6 +33,7 @@ public class OrchestrateFabric implements ModInitializer {
     public static void registerContents() {
         OrchestrateBlocks.registerAll(Registry::register);
         OrchestrateBlockEntityTypes.registerAll(Registry::register);
+        OrchestrateComponents.registerAll(Registry::register);
         OrchestrateItems.registerAll(Registry::register);
         OrchestrateMenuTypes.registerAll(Registry::register);
         OrchestrateSoundEvents.registerAll(Registry::register);
@@ -49,14 +54,22 @@ public class OrchestrateFabric implements ModInitializer {
         });
 
         // TODO: Test code, replace with properly configured code as soon as it's done.
-        MibInstrumentEvents.COOLDOWN.register((stack, entity, original) -> 20);
-        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> (int)Orchestrate.createParticleAccelerator().duration() + 20);
+        MibInstrumentEvents.COOLDOWN.register((stack, entity, original) -> stack.has(OrchestrateComponents.SONG) ? 20 : original);
+        MibInstrumentEvents.USE_DURATION.register((stack, entity, original) -> stack.has(OrchestrateComponents.SONG) ? (int) stack.get(OrchestrateComponents.SONG).duration() + 20 : original);
     }
 
     public static void registerNetwork() {
         PayloadTypeRegistry.playS2C().register(OrchestrateStartPlayingClientboundPacket.TYPE, OrchestrateStartPlayingClientboundPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(UpdateSongClientboundPacket.TYPE, UpdateSongClientboundPacket.STREAM_CODEC);
+
         PayloadTypeRegistry.playC2S().register(OrchestrateStartPlayingServerboundPacket.TYPE, OrchestrateStartPlayingServerboundPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateAuthorServerboundPacket.TYPE, UpdateAuthorServerboundPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateNameServerboundPacket.TYPE, UpdateNameServerboundPacket.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateNotesServerboundPacket.TYPE, UpdateNotesServerboundPacket.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(OrchestrateStartPlayingServerboundPacket.TYPE, (payload, context) -> payload.handle(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(UpdateAuthorServerboundPacket.TYPE, (payload, context) -> payload.handle(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(UpdateNameServerboundPacket.TYPE, (payload, context) -> payload.handle(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(UpdateNotesServerboundPacket.TYPE, (payload, context) -> payload.handle(context.player()));
     }
 }

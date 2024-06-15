@@ -1,10 +1,18 @@
 package dev.greenhouseteam.orchestrate.menu;
 
 import dev.greenhouseteam.mib.item.MibInstrumentItem;
+import dev.greenhouseteam.orchestrate.Orchestrate;
 import dev.greenhouseteam.orchestrate.block.CompositionTableBlockEntity;
+import dev.greenhouseteam.orchestrate.network.clientbound.UpdateSongClientboundPacket;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateBlocks;
+import dev.greenhouseteam.orchestrate.registry.OrchestrateComponents;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateMenuTypes;
+import dev.greenhouseteam.orchestrate.song.Note;
+import dev.greenhouseteam.orchestrate.song.Song;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -13,27 +21,49 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class CompositionMenu extends AbstractContainerMenu {
-    protected Container itemContainer = new SimpleContainer(MAX_SLOT_SIZE) {
+    protected Container inputContainer = new SimpleContainer(INPUT_SLOT_SIZE) {
         @Override
         public void setChanged() {
             super.setChanged();
             if (previousFilledInputs != getHighestInputSlotWithItem())
                 filledInputs.set(Mth.clamp(getHighestInputSlotWithItem() + 1, 0, 4));
+
             if (getActiveSlot() == -1 && slots.getFirst().hasItem()) {
                 setActiveSlot(0);
-            } else if (getActiveSlot() > -1 && !slots.get(getActiveSlot()).hasItem())
+                createResult();
+            } else if (getActiveSlot() > -1 && !slots.get(getActiveSlot()).hasItem()) {
+                if (!player.level().isClientSide()) {
+                    Orchestrate.getHelper().sendClientboundPacket(new UpdateSongClientboundPacket(getActiveSlot(), Song.DEFAULT), (ServerPlayer) player);
+                    createResult();
+                }
                 setActiveSlot(Mth.clamp(getHighestInputSlotWithItem(), -1, 4));
+            }
         }
     };
-    public static final int MAX_SLOT_SIZE = 6;
+    protected Container resultContainer = new SimpleContainer(1);
+
+    private final Player player;
+
     public static final int INPUT_SLOT_SIZE = 5;
     public static final int OUTPUT_SLOT = 5;
+    public static final int TOTAL_SLOTS = 6;
 
     private final CompositionTableBlockEntity blockEntity;
     private final ContainerLevelAccess access;
     private int previousFilledInputs = 0;
+
+    @Nullable
+    private String songName = "";
+    @Nullable
+    private String songAuthor = "";
+    private final Map<Integer, List<Note>> notes = new HashMap<>();
 
     private final DataSlot filledInputs = DataSlot.standalone();
     private final DataSlot activeSlot = DataSlot.standalone();
@@ -45,33 +75,29 @@ public class CompositionMenu extends AbstractContainerMenu {
     public CompositionMenu(CompositionTableBlockEntity blockEntity, Inventory inventory, int syncId) {
         super(OrchestrateMenuTypes.COMPOSITION_TABLE, syncId);
         this.blockEntity = blockEntity;
+        this.player = inventory.player;
         this.access = ContainerLevelAccess.create(blockEntity.getLevel(), blockEntity.getBlockPos());
         for (int i = 0; i < INPUT_SLOT_SIZE; ++i) {
             int finalI = i;
-            addSlot(new Slot(itemContainer, i, 15, 15 + (i * 20)) {
-
+            addSlot(new Slot(inputContainer, i, 15, 15 + (i * 20)) {
                 @Override
                 public boolean isActive() {
                     return getFilledInputs() > finalI - 1;
                 }
 
-                @Override
-                public void set(ItemStack stack) {
-                    if (getItem().isEmpty() && !stack.isEmpty()) {
-                        int value = Mth.clamp(finalI + 1, 0, 4);
-                        filledInputs.set(value);
-                        previousFilledInputs = value;
-                    }
-                    super.set(stack);
-                }
-
-                // TODO: Add an instrument tag to the base mod. It likely won't be used here, but it'd be good to have.
                 public boolean mayPlace(ItemStack stack) {
                     return stack.getItem() instanceof MibInstrumentItem;
                 }
             });
         }
-        addSlot(new Slot(itemContainer, 5, 156, 107) {
+        addSlot(new Slot(resultContainer, 0, 156, 108) {
+            @Override
+            public void onTake(Player player, ItemStack stack) {
+                inputContainer.removeItem(getActiveSlot(), 1);
+                inputContainer.setChanged();
+                super.onTake(player, stack);
+            }
+
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
@@ -92,13 +118,13 @@ public class CompositionMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        access.execute((level, pos) -> this.clearContainer(player, itemContainer));
+        access.execute((level, pos) -> this.clearContainer(player, inputContainer));
     }
 
     private int getHighestInputSlotWithItem() {
         int value = -1;
-        for (int i = 0; i < itemContainer.getContainerSize(); ++i)
-            if (!itemContainer.getItem(i).isEmpty())
+        for (int i = 0; i < inputContainer.getContainerSize(); ++i)
+            if (!inputContainer.getItem(i).isEmpty())
                 value = i;
         return value;
     }
@@ -122,6 +148,14 @@ public class CompositionMenu extends AbstractContainerMenu {
         if (getFilledInputs() < slot)
             return;
         activeSlot.set(slot);
+
+        if (inputContainer.getItem(slot).has(OrchestrateComponents.SONG)) {
+            notes.put(slot, inputContainer.getItem(slot).get(OrchestrateComponents.SONG).notes());
+            if (!player.level().isClientSide()) {
+                Orchestrate.getHelper().sendClientboundPacket(new UpdateSongClientboundPacket(slot, inputContainer.getItem(slot).get(OrchestrateComponents.SONG)), (ServerPlayer)player);
+                createResult();
+            }
+        }
     }
 
     public int getActiveSlot() {
@@ -135,7 +169,7 @@ public class CompositionMenu extends AbstractContainerMenu {
     @Override
     public ItemStack quickMoveStack(Player player, int slot) {
         int output = OUTPUT_SLOT;
-        int minPlayerInventory = MAX_SLOT_SIZE;
+        int minPlayerInventory = TOTAL_SLOTS;
         int maxPlayerInventory = minPlayerInventory + 36;
         ItemStack stack = slots.get(slot).getItem();
         ItemStack copy = stack.copy();
@@ -145,7 +179,7 @@ public class CompositionMenu extends AbstractContainerMenu {
             else if (slot > output) {
                 if (!moveItemStackTo(stack, 0, 5, false))
                     return ItemStack.EMPTY;
-            } else if (!moveItemStackTo(stack, minPlayerInventory, maxPlayerInventory, false))
+            } else if (slot < output && !moveItemStackTo(stack, minPlayerInventory, maxPlayerInventory, false))
                 return ItemStack.EMPTY;
 
             if (stack.isEmpty())
@@ -160,6 +194,51 @@ public class CompositionMenu extends AbstractContainerMenu {
         }
 
         return copy;
+    }
+
+    public void setName(String name) {
+        songName = name;
+        createResult();
+    }
+
+    public void setAuthor(String author) {
+        songAuthor = author;
+        createResult();
+    }
+
+    public void setNotes(int channel, List<Note> notes) {
+        this.notes.put(channel, notes);
+        createResult();
+    }
+
+    public void createResult() {
+        if (getActiveSlot() == -1) {
+            resultContainer.setItem(0, ItemStack.EMPTY);
+            broadcastChanges();
+            return;
+        }
+
+        ItemStack stack = inputContainer.getItem(getActiveSlot()).copy();
+        if (notes.getOrDefault(getActiveSlot(), List.of()).isEmpty()) {
+            if (stack.has(DataComponents.ITEM_NAME) && stack.has(OrchestrateComponents.SONG) && stack.get(DataComponents.ITEM_NAME).equals(stack.get(OrchestrateComponents.SONG).name()))
+                stack.remove(DataComponents.ITEM_NAME);
+            stack.remove(OrchestrateComponents.SONG);
+            broadcastChanges();
+            return;
+        }
+
+        if (songName != null)
+            stack.set(DataComponents.ITEM_NAME, Component.literal(songName));
+        Song.Builder builder = new Song.Builder();
+        if (songName != null)
+            builder.named(songName);
+        if (songAuthor != null)
+            builder.author(songAuthor);
+        for (Note note : notes.getOrDefault(getActiveSlot(), List.of()))
+            builder.add(note);
+        stack.set(OrchestrateComponents.SONG, builder.build());
+        resultContainer.setItem(0, stack);
+        broadcastChanges();
     }
 
     @Override

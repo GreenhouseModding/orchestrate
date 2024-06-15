@@ -45,6 +45,8 @@ public interface OrchestratePlatformHelper {
 
     void openCompositionMenu(ServerPlayer player, BlockPos tablePos);
 
+    void sendClientboundPacket(CustomPacketPayload payload, ServerPlayer player);
+
     void sendTrackingClientboundPacket(CustomPacketPayload payload, Entity entity);
 
     void sendServerboundPacket(CustomPacketPayload payload);

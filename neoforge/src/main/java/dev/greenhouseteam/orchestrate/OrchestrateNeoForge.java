@@ -3,8 +3,13 @@ package dev.greenhouseteam.orchestrate;
 
 import dev.greenhouseteam.mib.event.MibInstrumentEvents;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
+import dev.greenhouseteam.orchestrate.network.clientbound.UpdateSongClientboundPacket;
 import dev.greenhouseteam.orchestrate.network.serverbound.OrchestrateStartPlayingServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateAuthorServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateNameServerboundPacket;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateNotesServerboundPacket;
 import dev.greenhouseteam.orchestrate.platform.OrchestratePlatformHelperNeoForge;
+import dev.greenhouseteam.orchestrate.registry.OrchestrateComponents;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -31,8 +36,12 @@ public class OrchestrateNeoForge {
         @SubscribeEvent
         public static void registerPayloadHandlers(RegisterPayloadHandlersEvent event) {
             event.registrar("1.0.0")
+                    .playToClient(OrchestrateStartPlayingClientboundPacket.TYPE, OrchestrateStartPlayingClientboundPacket.STREAM_CODEC, (packet, context) -> packet.handle())
+                    .playToClient(UpdateSongClientboundPacket.TYPE, UpdateSongClientboundPacket.STREAM_CODEC, (packet, context) -> packet.handle())
                     .playToServer(OrchestrateStartPlayingServerboundPacket.TYPE, OrchestrateStartPlayingServerboundPacket.STREAM_CODEC, (packet, context) -> packet.handle((ServerPlayer) context.player()))
-                    .playToClient(OrchestrateStartPlayingClientboundPacket.TYPE, OrchestrateStartPlayingClientboundPacket.STREAM_CODEC, (packet, context) -> packet.handle());
+                    .playToServer(UpdateAuthorServerboundPacket.TYPE, UpdateAuthorServerboundPacket.STREAM_CODEC, (packet, context) -> packet.handle((ServerPlayer) context.player()))
+                    .playToServer(UpdateNameServerboundPacket.TYPE, UpdateNameServerboundPacket.STREAM_CODEC, (packet, context) -> packet.handle((ServerPlayer) context.player()))
+                    .playToServer(UpdateNotesServerboundPacket.TYPE, UpdateNotesServerboundPacket.STREAM_CODEC, (packet, context) -> packet.handle((ServerPlayer) context.player()));
         }
 
         @SubscribeEvent
@@ -52,13 +61,15 @@ public class OrchestrateNeoForge {
         // TODO: Test code, replace with properly configured code as soon as it's done.
         @SubscribeEvent
         public static void setInstrumentCooldown(MibInstrumentEvents.CooldownEvent event) {
-            event.setValue(20);
+            if (event.getStack().has(OrchestrateComponents.SONG))
+                event.setValue(20);
         }
 
         // TODO: Test code, replace with properly configured code as soon as it's done.
         @SubscribeEvent
         public static void setInstrumentUseDuration(MibInstrumentEvents.UseDurationEvent event) {
-            event.setValue((int)Orchestrate.createParticleAccelerator().duration() + 20);
+            if (event.getStack().has(OrchestrateComponents.SONG))
+                event.setValue(event.getStack().get(OrchestrateComponents.SONG).duration());
         }
 
         private static void addAfter(BuildCreativeModeTabContentsEvent event, Item startItem, Item newItem) {

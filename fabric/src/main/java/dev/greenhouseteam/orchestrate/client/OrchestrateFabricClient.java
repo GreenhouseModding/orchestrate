@@ -2,6 +2,7 @@ package dev.greenhouseteam.orchestrate.client;
 
 import dev.greenhouseteam.orchestrate.client.screen.CompositionScreen;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
+import dev.greenhouseteam.orchestrate.network.clientbound.UpdateSongClientboundPacket;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateMenuTypes;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -12,5 +13,6 @@ public class OrchestrateFabricClient implements ClientModInitializer {
     public void onInitializeClient() {
         MenuScreens.register(OrchestrateMenuTypes.COMPOSITION_TABLE, CompositionScreen::new);
         ClientPlayNetworking.registerGlobalReceiver(OrchestrateStartPlayingClientboundPacket.TYPE, (packet, context) -> packet.handle());
+        ClientPlayNetworking.registerGlobalReceiver(UpdateSongClientboundPacket.TYPE, (packet, context) -> packet.handle());
     }
 }

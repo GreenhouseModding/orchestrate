@@ -1,4 +1,6 @@
 {
   "block.orchestrate.composition_table": "Composition Table",
-  "container.orchestrate.composition": "Compose"
+  "container.orchestrate.composition": "Compose",
+
+  "item.orchestrate.author": "Composed by %s"
 }

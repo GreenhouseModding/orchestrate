@@ -7,6 +7,8 @@ import dev.greenhouseteam.mib.data.KeyWithOctave;
 import dev.greenhouseteam.mib.registry.MibComponents;
 import dev.greenhouseteam.orchestrate.Orchestrate;
 import dev.greenhouseteam.orchestrate.menu.CompositionMenu;
+import dev.greenhouseteam.orchestrate.network.serverbound.UpdateNotesServerboundPacket;
+import dev.greenhouseteam.orchestrate.song.Note;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
@@ -21,18 +23,18 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> {
     private static final ResourceLocation BACKGROUND_LOCATION = Orchestrate.asResource("textures/gui/container/composition_table.png");
 
     private boolean previousFullscreen;
-    private final List<NoteWidget> notes = new ArrayList<>();
+    private final Map<Integer, List<NoteWidget>> notes = new HashMap<>();
     private MibSoundInstance playedSound;
     private int scroll = 0;
     private int bottomKeyOctave = KeyWithOctave.DEFAULT.getValue();
     private int previousNoteWidth = 4;
+    private int duration = 0;
     private final List<AbstractWidget> widgetsToRemove = new ArrayList<>();
 
     public CompositionScreen(CompositionMenu menu, Inventory inventory, Component component) {
@@ -50,11 +52,20 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             addRenderableWidget(new ToggleButton(i));
     }
 
+    public void fromNotes(int channel, List<Note> notes) {
+        this.notes.getOrDefault(channel, List.of()).forEach(this::removeWidget);
+        this.notes.remove(channel);
+
+        List<NoteWidget> converted = notes.stream().map(note -> new NoteWidget(note.startTime(), leftPos + 60 + note.startTime() - scroll, topPos + 22 - (((note.key().getValue() - bottomKeyOctave - 7) * 8 - 1)), note.duration(), channel, note.key().getValue())).toList();
+        this.notes.put(channel, new ArrayList<>(converted));
+        this.notes.get(channel).forEach(this::addRenderableWidget);
+    }
+
     @Override
     protected void containerTick() {
         boolean previousFullscreen = Minecraft.getInstance().options.fullscreen().get();
         if (this.previousFullscreen != previousFullscreen)
-            notes.forEach(this::addRenderableWidget);
+            notes.values().forEach(widgets -> widgets.forEach(this::addRenderableWidget));
         this.previousFullscreen = previousFullscreen;
 
         widgetsToRemove.forEach(widget -> {
@@ -65,6 +76,19 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             removeWidget(widget);
         });
         widgetsToRemove.clear();
+    }
+
+    protected void removeNote(int channel, NoteWidget widget) {
+        if (!notes.containsKey(channel))
+            return;
+        notes.get(channel).remove(widget);
+        if (notes.get(channel).isEmpty())
+            notes.remove(channel);
+    }
+
+    protected void updateNotes(int channel) {
+        duration = notes.getOrDefault(channel, List.of()).stream().map(value -> value.start + value.getWidth()).max(Comparator.comparingInt(value -> value)).orElse(0);
+        Orchestrate.getHelper().sendServerboundPacket(new UpdateNotesServerboundPacket(channel, notes.getOrDefault(channel, List.of()).stream().map(noteWidget -> new Note(KeyWithOctave.fromInt(noteWidget.keyWithOctave), 1.0F, noteWidget.start, noteWidget.getWidth())).toList()));
     }
 
     @Override
@@ -95,7 +119,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             var noteWidget = new NoteWidget((int) (scroll + (mouseX - leftPos - 60)), (int) mouseX, Mth.clamp(topPos + 86 - (int)((topPos + 86 - mouseY) / 8) * 8 - 7, topPos + 22, topPos + 86), previousNoteWidth, menu.getActiveSlot(), keyWithOctave.getValue());
             noteWidget.storeValues(mouseX);
             addRenderableWidget(noteWidget);
-            notes.add(noteWidget);
+            notes.computeIfAbsent(menu.getActiveSlot(), i -> new ArrayList<>()).add(noteWidget);
             noteWidget.mouseClicked(mouseX, mouseY, button);
             setFocused(noteWidget);
             noteWidget.moving = true;
@@ -113,6 +137,10 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             playedSound.stopOrFadeOut();
             playedSound = null;
         }
+
+        if (getFocused() != null)
+            getFocused().mouseReleased(mouseX, mouseY, button);
+
         setFocused(null);
         setDragging(false);
         return super.mouseReleased(mouseX, mouseY, button);
@@ -152,10 +180,6 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             this.keyWithOctave = keyWithOctave;
         }
 
-        public int getStart() {
-            return start;
-        }
-
         @Override
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float tickDelta) {
             if (start < scroll || start > scroll + 208)
@@ -189,7 +213,6 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         private boolean moving = false;
         private int originalStart = 0;
         private int originalWidth = 0;
-        private int anchor = 0;
 
         private double originalMouseX;
         private double mouseOrigin;
@@ -200,7 +223,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                 boolean bl = clicked(mouseX, mouseY);
                 if (bl) {
                     if (button == 0) {
-                        this.onClick(mouseX, mouseY);
+                        onClick(mouseX, mouseY);
                         ItemStack instrument = menu.getSlot(menu.getActiveSlot()).getItem();
                         KeyWithOctave keyWithOctave = KeyWithOctave.fromInt(this.keyWithOctave);
                         if (instrument.has(MibComponents.INSTRUMENT)) {
@@ -218,7 +241,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                         storeValues(mouseX);
                         return true;
                     } else if (button == 1) {
-                        notes.remove(this);
+                        removeNote(channelIndex, this);
                         widgetsToRemove.add(this);
                         setDragging(true);
                         return true;
@@ -246,6 +269,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         @Override
         public boolean mouseReleased(double mouseX, double mouseY, int button) {
             setFocused(false);
+            updateNotes(channelIndex);
             return super.mouseReleased(mouseX, mouseY, button);
         }
 
@@ -306,7 +330,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                     return true;
                 }
             } else if (button == 1 && clicked(mouseX, mouseY)) {
-                notes.remove(this);
+                removeNote(channelIndex, this);
                 widgetsToRemove.add(this);
                 return true;
             }

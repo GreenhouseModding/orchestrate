@@ -1,14 +1,11 @@
 package dev.greenhouseteam.orchestrate;
 
 import dev.greenhouseteam.mib.component.ItemInstrument;
-import dev.greenhouseteam.mib.data.Key;
-import dev.greenhouseteam.mib.data.KeyWithOctave;
 import dev.greenhouseteam.mib.item.MibInstrumentItem;
 import dev.greenhouseteam.mib.registry.MibComponents;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
 import dev.greenhouseteam.orchestrate.platform.OrchestratePlatformHelper;
-import dev.greenhouseteam.orchestrate.song.Note;
-import dev.greenhouseteam.orchestrate.song.Song;
+import dev.greenhouseteam.orchestrate.registry.OrchestrateComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
@@ -42,9 +39,8 @@ public class Orchestrate {
         return helper;
     }
 
-    // TODO: Use new component for storing songs.
     public static InteractionResultHolder<ItemStack> playSong(LivingEntity living, ItemStack stack, InteractionHand hand) {
-        if (!(stack.getItem() instanceof MibInstrumentItem) && !stack.has(MibComponents.INSTRUMENT))
+        if (!(stack.getItem() instanceof MibInstrumentItem) || !stack.has(MibComponents.INSTRUMENT) || !stack.has(OrchestrateComponents.SONG))
             return InteractionResultHolder.pass(stack);
 
         ItemInstrument instrumentComponent = stack.get(MibComponents.INSTRUMENT);
@@ -54,34 +50,10 @@ public class Orchestrate {
 
         living.startUsingItem(hand);
         if (!living.level().isClientSide()) {
-            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(living.getId(), hand == InteractionHand.OFF_HAND, createParticleAccelerator(), instrument.get()), living);
+            Orchestrate.getHelper().sendTrackingClientboundPacket(new OrchestrateStartPlayingClientboundPacket(living.getId(), hand == InteractionHand.OFF_HAND, stack.get(OrchestrateComponents.SONG), instrument.get()), living);
             if (living instanceof Player player)
                 player.awardStat(Stats.ITEM_USED.get(stack.getItem()));
         }
         return InteractionResultHolder.consume(stack);
-    }
-
-    // TODO: Remove these when testing is no longer a thing.
-    public static Song createTestSong() {
-        Song.Builder builder = new Song.Builder();
-        for (int i = 0; i < Key.values().length * 3; ++i) {
-            int octave = (i / 12) + 2;
-            int index = i % 12;
-            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 0.2F + ((float) i / (Key.values().length * 3)), i * 40, 40));
-        }
-        return builder.build();
-    }
-
-    public static Song createParticleAccelerator() {
-        Song.Builder builder = new Song.Builder();
-        int previousStartTime = 0;
-        for (int i = 0; i < Key.values().length * 3; ++i) {
-            int octave = (i / 12) + 3;
-            int index = i % 12;
-            int duration = 20 - (int)(i * 0.56);
-            builder.add(new Note(new KeyWithOctave(Key.values()[index], octave), 1.0F, previousStartTime, duration));
-            previousStartTime = previousStartTime + duration;
-        }
-        return builder.build();
     }
 }
