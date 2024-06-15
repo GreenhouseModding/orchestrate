@@ -189,6 +189,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         private boolean moving = false;
         private int originalStart = 0;
         private int originalWidth = 0;
+        private int anchor = 0;
 
         private double originalMouseX;
         private double mouseOrigin;
@@ -254,21 +255,22 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                 // TODO: Allow resizing and moving to scroll.
                 if (isValidClickButton(button)) {
                     if (resizing && (mouseX < leftPos + 60 + start - scroll && resizeDir > 0 || mouseX > leftPos + 60 + start - scroll + width && resizeDir < 0)) {
-                        originalWidth = width;
-                        originalStart = Mth.clamp(start - (resizeDir < 0 ? width : 0), scroll, scroll + 149 - width);
+                        originalWidth = 1;
+                        start = originalStart;
                         originalMouseX = leftPos + 60 + originalStart - scroll;
+                        setX((int) originalMouseX);
                         resizeDir = 0;
                     }
 
                     double mouseDiff = mouseX - originalMouseX;
                     double resizeBounds = width < 8 ? (double) width / 4 : (double) width / 8;
                     // TODO: Clip to beat size whilst not pressing shift.
-                    if ((mouseX > leftPos + 60 + start + width - resizeBounds && (isInNoteSection(mouseX, mouseY) && mouseY >= (double)getY() && mouseY < (double)(getY() + getHeight() + 1) || resizeDir == 0 && mouseDiff >= 0.1) || resizeDir == 1) && !moving) {
+                    if ((mouseX > leftPos + 60 + start + width - resizeBounds && (isInNoteSection(mouseX, mouseY) && mouseY >= (double)getY() && mouseY < (double)(getY() + getHeight() + 1) || resizeDir == 0 && mouseDiff >= 1) || resizeDir == 1) && !moving) {
                         width = Math.clamp(originalWidth + Mth.floor(mouseDiff), 1, 149 - originalStart);
                         resizing = true;
                         resizeDir = 1;
                         previousNoteWidth = width;
-                    } else if ((mouseX < leftPos + 60 + start + resizeBounds && (isInNoteSection(mouseX, mouseY) && mouseY >= (double)getY() && mouseY < (double)(getY() + getHeight() + 1) || resizeDir == 0 && mouseDiff <= -0.1) || resizeDir == -1) && !moving) {
+                    } else if ((mouseX < leftPos + 60 + start + resizeBounds && (isInNoteSection(mouseX, mouseY) && mouseY >= (double)getY() && mouseY < (double)(getY() + getHeight() + 1) || resizeDir == 0 && mouseDiff <= -1) || resizeDir == -1) && !moving) {
                         width = Math.clamp(originalWidth - Mth.floor(mouseDiff), 1, originalWidth + originalStart);
                         start = Math.clamp(originalStart + Mth.floor(mouseDiff), scroll, scroll + 149 - width);
                         setX((int) Math.clamp(originalMouseX + Mth.floor(mouseDiff), leftPos + 60, leftPos + 209 - width));
