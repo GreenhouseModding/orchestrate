@@ -255,7 +255,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                 if (isValidClickButton(button)) {
                     if (resizing && (mouseX < leftPos + 60 + start - scroll && resizeDir > 0 || mouseX > leftPos + 60 + start - scroll + width && resizeDir < 0)) {
                         originalWidth = width;
-                        originalStart = Mth.clamp(start - (resizeDir < 0 ? width : 0), scroll, scroll + 149);
+                        originalStart = Mth.clamp(start - (resizeDir < 0 ? width : 0), scroll, scroll + 149 - width);
                         originalMouseX = leftPos + 60 + originalStart - scroll;
                         resizeDir = 0;
                     }
