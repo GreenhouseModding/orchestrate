@@ -32,8 +32,7 @@ public class CompositionMenu extends AbstractContainerMenu {
         @Override
         public void setChanged() {
             super.setChanged();
-            if (previousFilledInputs != getHighestInputSlotWithItem())
-                filledInputs.set(Mth.clamp(getHighestInputSlotWithItem() + 1, 0, 4));
+            filledInputs.set(Mth.clamp(getHighestInputSlotWithItem() + 1, 0, 4));
 
             if (getActiveSlot() == -1 && slots.getFirst().hasItem()) {
                 setActiveSlot(0);
@@ -57,7 +56,6 @@ public class CompositionMenu extends AbstractContainerMenu {
 
     private final CompositionTableBlockEntity blockEntity;
     private final ContainerLevelAccess access;
-    private int previousFilledInputs = 0;
 
     @Nullable
     private String songName = "";

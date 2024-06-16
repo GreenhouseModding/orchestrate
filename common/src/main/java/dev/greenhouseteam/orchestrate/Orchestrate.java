@@ -2,7 +2,7 @@ package dev.greenhouseteam.orchestrate;
 
 import dev.greenhouseteam.mib.component.ItemInstrument;
 import dev.greenhouseteam.mib.item.MibInstrumentItem;
-import dev.greenhouseteam.mib.registry.MibComponents;
+import dev.greenhouseteam.mib.registry.MibDataComponents;
 import dev.greenhouseteam.orchestrate.network.clientbound.OrchestrateStartPlayingClientboundPacket;
 import dev.greenhouseteam.orchestrate.platform.OrchestratePlatformHelper;
 import dev.greenhouseteam.orchestrate.registry.OrchestrateComponents;
@@ -40,10 +40,10 @@ public class Orchestrate {
     }
 
     public static InteractionResultHolder<ItemStack> playSong(LivingEntity living, ItemStack stack, InteractionHand hand) {
-        if (!(stack.getItem() instanceof MibInstrumentItem) || !stack.has(MibComponents.INSTRUMENT) || !stack.has(OrchestrateComponents.SONG))
+        if (!(stack.getItem() instanceof MibInstrumentItem) || !stack.has(MibDataComponents.INSTRUMENT) || !stack.has(OrchestrateComponents.SONG))
             return InteractionResultHolder.pass(stack);
 
-        ItemInstrument instrumentComponent = stack.get(MibComponents.INSTRUMENT);
+        ItemInstrument instrumentComponent = stack.get(MibDataComponents.INSTRUMENT);
         var instrument = instrumentComponent.sound().unwrap(living.level().registryAccess());
         if (instrument.isEmpty())
             return InteractionResultHolder.pass(stack);

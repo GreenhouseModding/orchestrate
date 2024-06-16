@@ -69,6 +69,17 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
         this.elapsedTicks = elapsedDuration;
     }
 
+    public static OrchestrateSoundInstance createPosDependentMaster(Vec3 pos, Song song, MibSoundSet soundSet) {
+        return createPosDependentMaster(pos, song, soundSet, 0);
+    }
+
+    public static OrchestrateSoundInstance createPosDependentMaster(Vec3 pos, Song song, MibSoundSet soundSet, int elapsedDuration) {
+        return new OrchestrateSoundInstance(null,
+                pos.x, pos.y, pos.z, OrchestrateSoundEvents.MASTER,
+                song, soundSet, soundSet.getSound(KeyWithOctave.DEFAULT, 1.0F),
+                1.0F, 1.0F, song.duration(), elapsedDuration, false, false);
+    }
+
     public static OrchestrateSoundInstance createEntityDependentMaster(LivingEntity living, ItemStack stack,
                                                                        Song song, MibSoundSet soundSet) {
         return createEntityDependentMaster(living, stack, song, soundSet, 0);
@@ -121,7 +132,6 @@ public class OrchestrateSoundInstance extends MibSoundInstance {
                     return;
                 float pitch = note.key().getPitchFromNote();
                 Minecraft.getInstance().getSoundManager().queueTickingSound(new OrchestrateSoundInstance(this, living, x, y, z, stopPredicate, sound.sounds().start().value(), song, soundSet, sound, note.volume(), pitch, note.duration(), 0, false, true));
-
             }
         }
     }
