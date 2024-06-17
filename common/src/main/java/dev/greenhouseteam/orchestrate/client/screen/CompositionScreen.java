@@ -37,13 +37,14 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
 
     private boolean previousFullscreen;
     private final Map<Integer, List<NoteWidget>> notes = new HashMap<>();
-    private MibSoundInstance playedSound;
+    private List<MibSoundInstance> playedSounds = new ArrayList<>();
 
     private int scroll = 0;
     private int bottomKeyOctave = KeyWithOctave.DEFAULT.getValue();
     private int previousNoteWidth = 4;
     private int duration = 0;
 
+    private int previousChannelIndex = -1;
     private int originalScroll = 0;
     private boolean playing = false;
 
@@ -89,11 +90,14 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
         });
         widgetsToRemove.clear();
         if (playing) {
-            if (scroll > duration + 20)
+            if (scroll > duration + 20 || previousChannelIndex != menu.getActiveSlot()) {
                 stopMusic();
+                return;
+            }
             notes.values().forEach(widgets -> widgets.forEach(widget -> widget.setX(widget.getX() - 1)));
             ++scroll;
         }
+        previousChannelIndex = menu.getActiveSlot();
     }
 
     protected void removeNote(int channel, NoteWidget widget) {
@@ -132,31 +136,32 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
             }
         }
 
-        if (isInNoteSection(mouseX, mouseY) && button == 0 && menu.getActiveSlot() > -1) {
-            KeyWithOctave keyWithOctave = KeyWithOctave.fromInt((int) (bottomKeyOctave + Mth.clamp((topPos + 86 - mouseY) / 8, 0, 7)));
-            var noteWidget = new NoteWidget((int) (scroll + (mouseX - leftPos - 60)), (int) mouseX, Mth.clamp(topPos + 86 - (int)((topPos + 86 - mouseY) / 8) * 8 - 7, topPos + 22, topPos + 86), previousNoteWidth, menu.getActiveSlot(), keyWithOctave.getValue());
-            noteWidget.storeValues(mouseX);
-            addRenderableWidget(noteWidget);
-            notes.computeIfAbsent(menu.getActiveSlot(), i -> new ArrayList<>()).add(noteWidget);
-            noteWidget.mouseClicked(mouseX, mouseY, button);
-            setFocused(noteWidget);
-            noteWidget.moving = true;
-            if (noteWidget.start + noteWidget.getWidth() > scroll + 149)
-                scroll = noteWidget.start + noteWidget.getWidth();
-            return true;
-        }
+        if (!playing) {
+            if (isInNoteSection(mouseX, mouseY) && button == 0 && menu.getActiveSlot() > -1) {
+                KeyWithOctave keyWithOctave = KeyWithOctave.fromInt((int) (bottomKeyOctave + Mth.clamp((topPos + 86 - mouseY) / 8, 0, 7)));
+                var noteWidget = new NoteWidget((int) (scroll + (mouseX - leftPos - 60)), (int) mouseX, Mth.clamp(topPos + 86 - (int)((topPos + 86 - mouseY) / 8) * 8 - 7, topPos + 22, topPos + 86), previousNoteWidth, menu.getActiveSlot(), keyWithOctave.getValue());
+                noteWidget.storeValues(mouseX);
+                addRenderableWidget(noteWidget);
+                notes.computeIfAbsent(menu.getActiveSlot(), i -> new ArrayList<>()).add(noteWidget);
+                noteWidget.mouseClicked(mouseX, mouseY, button);
+                setFocused(noteWidget);
+                noteWidget.moving = true;
+                if (noteWidget.start + noteWidget.getWidth() > scroll + 149)
+                    scroll = noteWidget.start + noteWidget.getWidth();
+                return true;
+            }
 
-        if (isInNoteSection(mouseX, mouseY) && button == 1)
-            setDragging(true);
+            if (isInNoteSection(mouseX, mouseY) && button == 1)
+                setDragging(true);
+        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-
-        if (playedSound != null && button == 0) {
-            playedSound.stopOrFadeOut();
-            playedSound = null;
+        if (!playing && !playedSounds.isEmpty() && button == 0) {
+            playedSounds.forEach(MibSoundInstance::stopOrFadeOut);
+            playedSounds.clear();
         }
 
         if (getFocused() != null)
@@ -213,32 +218,40 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
     }
 
     protected boolean playMusic() {
-        if (playedSound != null) {
-            playedSound.stopAndClear();
-            playedSound = null;
-        }
+        if (menu.getActiveSlot() == -1)
+            return false;
+
+        playedSounds.forEach(MibSoundInstance::stopAndClear);
+        playedSounds.clear();
 
         originalScroll = scroll;
         playing = true;
-        Song.Builder builder = new Song.Builder();
 
-        List<Note> notes = this.notes.getOrDefault(menu.getActiveSlot(), List.of()).stream().map(noteWidget -> new Note(KeyWithOctave.fromInt(noteWidget.keyWithOctave), 1.0F, noteWidget.start, noteWidget.getWidth())).toList();
-        for (Note note : notes)
-            builder.add(note);
+        for (int i = 0; i < CompositionMenu.INPUT_SLOT_SIZE; ++i) {
+            ItemStack stack = menu.getSlot(i).getItem();
+            if (stack.isEmpty())
+                continue;
+            Song.Builder builder = new Song.Builder();
 
-        playedSound = OrchestrateSoundInstance.createPosDependentMaster(Minecraft.getInstance().cameraEntity.position(), builder.isEmpty() ? Song.DEFAULT : builder.build(), getSoundSet(menu.getSlot(menu.getActiveSlot()).getItem()).value(), scroll);
-        Minecraft.getInstance().getSoundManager().play(playedSound);
+            List<Note> notes = this.notes.getOrDefault(i, List.of()).stream().map(noteWidget -> new Note(KeyWithOctave.fromInt(noteWidget.keyWithOctave), 1.0F, noteWidget.start, noteWidget.getWidth())).toList();
+            for (Note note : notes)
+                builder.add(note);
+            playedSounds.add(OrchestrateSoundInstance.createPosDependentMaster(Minecraft.getInstance().cameraEntity.position(), builder.isEmpty() ? Song.DEFAULT : builder.build(), getSoundSet(stack).value(), scroll));
+        }
+        playedSounds.forEach(sound -> Minecraft.getInstance().getSoundManager().play(sound));
         return playing;
     }
 
     protected boolean stopMusic() {
         playing = false;
 
-        if (playedSound instanceof OrchestrateSoundInstance orchestrate)
-            orchestrate.stopMaster();
+        playedSounds.forEach(sound -> {
+            if (sound instanceof OrchestrateSoundInstance orchestrate)
+                orchestrate.stopMaster();
+        });
         notes.values().forEach(widgets -> widgets.forEach(widget -> widget.setX(leftPos + 60 + widget.start - originalScroll)));
         scroll = originalScroll;
-        playedSound = null;
+        playedSounds.clear();
 
         return !playing;
     }
@@ -321,7 +334,8 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                         var sounds = getSoundSet(menu.getSlot(menu.getActiveSlot()).getItem());
                         ExtendedSound sound = sounds.value().getSound(keyWithOctave, 1.0F);
                         if (sound != null) {
-                            playedSound = MibSoundInstance.createPosDependent(Minecraft.getInstance().cameraEntity.position(), sound, 1.0F, keyWithOctave.getPitchFromNote(sounds.value().getClosestDefined(keyWithOctave)));
+                            MibSoundInstance playedSound = MibSoundInstance.createPosDependent(Minecraft.getInstance().cameraEntity.position(), sound, 1.0F, keyWithOctave.getPitchFromNote(sounds.value().getClosestDefined(keyWithOctave)));
+                            playedSounds.add(playedSound);
                             Minecraft.getInstance().getSoundManager().play(playedSound);
                         }
                         setDragging(true);
@@ -419,7 +433,7 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                         if (newKey != keyWithOctave) {
                             keyWithOctave = newKey;
                             setY(Mth.clamp(topPos + 86 - (int)((86 + topPos - mouseY) / 8) * 8 - 7, topPos + 22, topPos + 79));
-                            playedSound.stopAndClear();
+                            playedSounds.forEach(MibSoundInstance::stopAndClear);
                             ItemStack instrument = menu.getSlot(menu.getActiveSlot()).getItem();
                             KeyWithOctave keyWithOctave = KeyWithOctave.fromInt(this.keyWithOctave);
                             if (instrument.has(MibDataComponents.INSTRUMENT)) {
@@ -427,7 +441,8 @@ public class CompositionScreen extends AbstractContainerScreen<CompositionMenu> 
                                 if (sounds.isPresent()) {
                                     ExtendedSound sound = sounds.get().value().getSound(keyWithOctave, 1.0F);
                                     if (sound != null) {
-                                        playedSound = MibSoundInstance.createPosDependent(Minecraft.getInstance().cameraEntity.position(), sound, 1.0F, keyWithOctave.getPitchFromNote(sounds.get().value().getClosestDefined(keyWithOctave)));
+                                        MibSoundInstance playedSound = MibSoundInstance.createPosDependent(Minecraft.getInstance().cameraEntity.position(), sound, 1.0F, keyWithOctave.getPitchFromNote(sounds.get().value().getClosestDefined(keyWithOctave)));
+                                        playedSounds.add(playedSound);
                                         Minecraft.getInstance().getSoundManager().play(playedSound);
                                     }
                                 }
